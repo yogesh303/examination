@@ -669,9 +669,57 @@ $currentUser = [
                             <th>Duration</th>
                             <th>Total Marks</th>
                             <th>Created</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="exams-tbody">
+                        <tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Assign Exam to Users -->
+            <div class="card">
+                <div class="card-title">Assign Exam to Users</div>
+                <form id="assign-exam-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Select Exam *</label>
+                            <select id="assign-exam-select" required>
+                                <option value="">Select Exam</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Select Users *</label>
+                            <div class="multiselect" id="users-multiselect">
+                                <div class="multiselect-header" onclick="toggleUsersMultiselect()">
+                                    <span id="users-multiselect-placeholder">Select users...</span>
+                                    <span>▼</span>
+                                </div>
+                                <div class="multiselect-dropdown" id="users-multiselect-dropdown"></div>
+                            </div>
+                            <div class="selected-items" id="selected-users"></div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Assign Exam</button>
+                </form>
+            </div>
+
+            <!-- Exam Assignments Table -->
+            <div class="card">
+                <div class="card-title">Exam Assignments</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User Name</th>
+                            <th>Email</th>
+                            <th>Exam Name</th>
+                            <th>Assigned Date</th>
+                            <th>Status</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assignments-tbody">
                         <tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr>
                     </tbody>
                 </table>
@@ -683,6 +731,8 @@ $currentUser = [
         let selectedSubjects = {};
         let allSubjects = [];
         let questionsBySubject = {};
+        let selectedUsers = {};
+        let allUsers = [];
 
         // Switch tabs
         function switchTab(tabName) {
@@ -1027,7 +1077,7 @@ $currentUser = [
                     const tbody = document.getElementById('exams-tbody');
                     
                     if (data.exams.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">No exams found. Create your first exam above!</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">No exams found. Create your first exam above!</td></tr>';
                     } else {
                         tbody.innerHTML = data.exams.map(exam => `
                             <tr>
@@ -1037,8 +1087,18 @@ $currentUser = [
                                 <td>${exam.duration_minutes} min</td>
                                 <td>${exam.total_marks || 0}</td>
                                 <td>${formatDate(exam.created_at)}</td>
+                                <td>
+                                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="viewExamDetails(${exam.id})">View</button>
+                                </td>
                             </tr>
                         `).join('');
+                    }
+                    
+                    // Update assign exam dropdown
+                    const assignSelect = document.getElementById('assign-exam-select');
+                    if (assignSelect) {
+                        assignSelect.innerHTML = '<option value="">Select Exam</option>' +
+                            data.exams.map(e => `<option value="${e.id}">${escapeHtml(e.exam_name)}</option>`).join('');
                     }
                 }
             } catch (error) {
@@ -1046,10 +1106,172 @@ $currentUser = [
             }
         }
 
+        function viewExamDetails(examId) {
+            showAlert('View exam details feature coming soon', 'success');
+        }
+
+        // ==================== USERS ====================
+        async function loadUsers() {
+            try {
+                const response = await fetch('dashboard-api.php?action=get_users');
+                const data = await response.json();
+                
+                if (data.success) {
+                    allUsers = data.users.filter(u => u.user_role === 'learner');
+                    updateUsersMultiselectDropdown();
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        function updateUsersMultiselectDropdown() {
+            const dropdown = document.getElementById('users-multiselect-dropdown');
+            dropdown.innerHTML = allUsers.map(user => `
+                <div class="multiselect-option" onclick="toggleUser(${user.id}, '${escapeHtml(user.full_name)}', '${escapeHtml(user.email)}')">
+                    <input type="checkbox" id="user-${user.id}" ${selectedUsers[user.id] ? 'checked' : ''}>
+                    <label for="user-${user.id}">${escapeHtml(user.full_name)} (${escapeHtml(user.email)})</label>
+                </div>
+            `).join('');
+        }
+
+        function toggleUsersMultiselect() {
+            document.getElementById('users-multiselect-dropdown').classList.toggle('show');
+        }
+
+        function toggleUser(userId, userName, userEmail) {
+            const checkbox = document.getElementById(`user-${userId}`);
+            
+            if (checkbox.checked) {
+                delete selectedUsers[userId];
+                checkbox.checked = false;
+            } else {
+                selectedUsers[userId] = {
+                    name: userName,
+                    email: userEmail
+                };
+                checkbox.checked = true;
+            }
+            
+            updateSelectedUsers();
+        }
+
+        function updateSelectedUsers() {
+            const container = document.getElementById('selected-users');
+            const placeholder = document.getElementById('users-multiselect-placeholder');
+            
+            const items = Object.entries(selectedUsers);
+            
+            if (items.length === 0) {
+                placeholder.textContent = 'Select users...';
+                container.innerHTML = '';
+            } else {
+                placeholder.textContent = `${items.length} user(s) selected`;
+                container.innerHTML = items.map(([id, data]) => `
+                    <div class="selected-item">
+                        ${escapeHtml(data.name)}
+                        <span class="remove" onclick="removeUser(${id})">×</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function removeUser(userId) {
+            delete selectedUsers[userId];
+            document.getElementById(`user-${userId}`).checked = false;
+            updateSelectedUsers();
+        }
+
+        // ==================== ASSIGNMENTS ====================
+        document.getElementById('assign-exam-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const examId = document.getElementById('assign-exam-select').value;
+            const userIds = Object.keys(selectedUsers).map(id => parseInt(id));
+            
+            if (userIds.length === 0) {
+                showAlert('Please select at least one user', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('exam-system-api.php?action=assign_exam', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        exam_id: examId,
+                        user_ids: userIds
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert(`Exam assigned to ${userIds.length} user(s) successfully!`, 'success');
+                    this.reset();
+                    selectedUsers = {};
+                    updateSelectedUsers();
+                    loadAssignments();
+                } else {
+                    showAlert(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('An error occurred', 'error');
+            }
+        });
+
+        async function loadAssignments() {
+            try {
+                const response = await fetch('exam-system-api.php?action=get_assignments');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const tbody = document.getElementById('assignments-tbody');
+                    
+                    if (data.assignments.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">No assignments found</td></tr>';
+                    } else {
+                        tbody.innerHTML = data.assignments.map(assignment => {
+                            let statusBadge = '';
+                            let scoreDisplay = '-';
+                            
+                            if (assignment.status === 'assigned') {
+                                statusBadge = '<span class="badge" style="background: #fff3cd; color: #856404;">Assigned</span>';
+                            } else if (assignment.status === 'in_progress') {
+                                statusBadge = '<span class="badge" style="background: #cfe2ff; color: #084298;">In Progress</span>';
+                            } else if (assignment.status === 'completed') {
+                                statusBadge = '<span class="badge" style="background: #d1e7dd; color: #0f5132;">Completed</span>';
+                                if (assignment.marks_obtained !== null) {
+                                    scoreDisplay = `${assignment.marks_obtained}/${assignment.total_marks} (${assignment.percentage}%)`;
+                                }
+                            }
+                            
+                            return `
+                                <tr>
+                                    <td>${escapeHtml(assignment.user_name)}</td>
+                                    <td>${escapeHtml(assignment.user_email)}</td>
+                                    <td>${escapeHtml(assignment.exam_name)}</td>
+                                    <td>${formatDate(assignment.assigned_at)}</td>
+                                    <td>${statusBadge}</td>
+                                    <td>${scoreDisplay}</td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading assignments:', error);
+            }
+        }
+
+        // Initialize
         // Initialize
         window.addEventListener('load', function() {
             loadSubjects();
             loadExams();
+            loadUsers();
+            loadAssignments();
             updateQuestionType();
         });
     </script>

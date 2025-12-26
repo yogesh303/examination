@@ -108,6 +108,35 @@ switch ($action) {
         }
         break;
     
+    // ==================== ASSIGNMENTS ====================
+    case 'assign_exam':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $result = $examSystem->assignExamToUsers($input['exam_id'], $input['user_ids']);
+        echo json_encode($result);
+        break;
+        
+    case 'get_assignments':
+        $assignments = $examSystem->getAllAssignments();
+        echo json_encode(['success' => true, 'assignments' => $assignments]);
+        break;
+        
+    case 'get_my_exams':
+        $myExams = $examSystem->getMyAssignedExams();
+        echo json_encode(['success' => true, 'exams' => $myExams]);
+        break;
+        
+    case 'start_exam':
+        $examId = $_POST['exam_id'] ?? 0;
+        $result = $examSystem->startExam($examId);
+        echo json_encode($result);
+        break;
+        
+    case 'submit_exam':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $result = $examSystem->submitExam($input['attempt_id'], $input['answers']);
+        echo json_encode($result);
+        break;
+    
     default:
         echo json_encode(['success' => false, 'message' => 'Invalid action']);
         break;

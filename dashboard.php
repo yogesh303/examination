@@ -79,7 +79,6 @@ $isAdmin = $dashboard->isAdmin();
         .user-role {
             font-size: 13px;
             color: #666;
-            text-transform: capitalize;
         }
 
         .user-role.admin {
@@ -750,7 +749,7 @@ $isAdmin = $dashboard->isAdmin();
                 <div class="user-details">
                     <div class="user-name"><?php echo htmlspecialchars($currentUser['full_name']); ?></div>
                     <div class="user-role <?php echo $currentUser['user_role']; ?>">
-                        <?php echo ucfirst($currentUser['user_role']); ?>
+                        <?php echo $currentUser['email']; ?>
                     </div>
                 </div>
                 <button class="logout-btn" onclick="logout()">Logout</button>
@@ -763,7 +762,11 @@ $isAdmin = $dashboard->isAdmin();
         <!-- Welcome Section -->
         <div class="welcome-section">
             <div class="welcome-title">
-                Welcome<?php echo $isAdmin ? ', Admin' : ''; ?>! 👋
+                Welcome <?php if ($isAdmin) {
+                    echo 'Admin';
+                } else {
+                    echo htmlspecialchars($currentUser['full_name']);
+                } ?>! 👋
             </div>
             <div class="welcome-subtitle">
                 <?php echo $isAdmin ? 'Manage your users and system' : 'View your profile and activities'; ?>
@@ -776,8 +779,12 @@ $isAdmin = $dashboard->isAdmin();
         <!-- Tabs -->
         <div class="tabs">
             <button class="tab active" onclick="switchTab('users')">Users</button>
-            <button class="tab" onclick="window.location.href='exams.php'">Exams</button>
-            <button class="tab" onclick="switchTab('results')">Results</button>
+            <?php if ($isAdmin): ?>
+            <button class="tab" onclick="window.location.href='exams.php'">Manage Exams</button>
+            <?php else: ?>
+            <button class="tab" onclick="window.location.href='my_exams.php'">My Exams</button>
+            <?php endif; ?>
+            <button class="tab" onclick="window.location.href='results.php'">Results</button>
         </div>
 
         <!-- Tab Contents -->
@@ -821,25 +828,53 @@ $isAdmin = $dashboard->isAdmin();
                     </div>
                 </div>
             <?php else: ?>
-                <!-- Learner View: Own Profile -->
-                <div class="card">
-                    <div class="card-title">My Profile</div>
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-label">Name</div>
-                            <div class="stat-value" style="font-size: 20px;"><?php echo htmlspecialchars($currentUser['full_name']); ?></div>
+
+                <!-- My Profile Sub-Tab -->
+                <div id="my-profile-subtab" class="sub-tab-content active">
+                    <div class="card">
+                        <div class="card-title">My Profile</div>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-label">Name</div>
+                                <div class="stat-value" style="font-size: 20px;"><?php echo htmlspecialchars($currentUser['full_name']); ?></div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Email</div>
+                                <div class="stat-value" style="font-size: 16px;"><?php echo htmlspecialchars($currentUser['email']); ?></div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Role</div>
+                                <div class="stat-value" style="font-size: 20px;"><?php echo ucfirst($currentUser['user_role']); ?></div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Member Since</div>
+                                <div class="stat-value" style="font-size: 16px;"><?php echo date('M Y', strtotime($currentUser['created_at'])); ?></div>
+                            </div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Email</div>
-                            <div class="stat-value" style="font-size: 16px;"><?php echo htmlspecialchars($currentUser['email']); ?></div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Role</div>
-                            <div class="stat-value" style="font-size: 20px;"><?php echo ucfirst($currentUser['user_role']); ?></div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Member Since</div>
-                            <div class="stat-value" style="font-size: 16px;"><?php echo date('M Y', strtotime($currentUser['created_at'])); ?></div>
+                    </div>
+                </div>
+
+                <!-- My Exams Sub-Tab -->
+                <div id="my-exams-subtab" class="sub-tab-content">
+                    <div class="card">
+                        <div class="card-title">My Assigned Exams</div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Exam Name</th>
+                                        <th>Subject</th>
+                                        <th>Questions</th>
+                                        <th>Duration</th>
+                                        <th>Total Marks</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="my-exams-tbody">
+                                    <tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
