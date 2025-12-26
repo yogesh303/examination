@@ -1,15 +1,60 @@
--- Complete Exam System Database Schema
--- Drop existing tables if they exist
-DROP TABLE IF EXISTS user_answers;
-DROP TABLE IF EXISTS exam_attempts;
-DROP TABLE IF EXISTS exam_questions;
-DROP TABLE IF EXISTS question_options;
-DROP TABLE IF EXISTS questions;
-DROP TABLE IF EXISTS exams;
-DROP TABLE IF EXISTS subjects;
+-- ========================================
+-- COMPLETE DATABASE SETUP
+-- User Authentication + Exam System
+-- ========================================
 
--- 1. Subjects Table
-CREATE TABLE subjects (
+-- Create database
+CREATE DATABASE IF NOT EXISTS user_auth_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+USE user_auth_db;
+
+-- ========================================
+-- 1. USER AUTHENTICATION TABLES
+-- ========================================
+
+-- Create users table
+CREATE TABLE IF NOT EXISTS users (
+    id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    last_login TIMESTAMP NULL,
+    user_role VARCHAR(255) NULL,
+    is_active TINYINT(1) DEFAULT 1,
+    INDEX idx_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create password reset tokens table (optional, for forgot password feature)
+CREATE TABLE IF NOT EXISTS password_resets (
+    id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    token VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    used TINYINT(1) DEFAULT 0,
+    INDEX idx_email (email),
+    INDEX idx_token (token)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create login attempts table (for security)
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ip_address VARCHAR(45) NOT NULL,
+    success TINYINT(1) DEFAULT 0,
+    INDEX idx_email (email),
+    INDEX idx_ip (ip_address)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ========================================
+-- 2. EXAM SYSTEM TABLES
+-- ========================================
+
+-- Subjects Table
+CREATE TABLE IF NOT EXISTS subjects (
     id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     subject_name VARCHAR(255) NOT NULL,
     subject_code VARCHAR(50) NOT NULL UNIQUE,
@@ -21,8 +66,8 @@ CREATE TABLE subjects (
     INDEX idx_subject_code (subject_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2. Questions Table
-CREATE TABLE questions (
+-- Questions Table
+CREATE TABLE IF NOT EXISTS questions (
     id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     subject_id INT(11) UNSIGNED NOT NULL,
     question_text TEXT NOT NULL,
@@ -36,8 +81,8 @@ CREATE TABLE questions (
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3. Question Options Table (4 options for each question)
-CREATE TABLE question_options (
+-- Question Options Table (4 options for each question)
+CREATE TABLE IF NOT EXISTS question_options (
     id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     question_id INT(11) UNSIGNED NOT NULL,
     option_text TEXT NOT NULL,
@@ -48,8 +93,8 @@ CREATE TABLE question_options (
     FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 4. Exams Table
-CREATE TABLE exams (
+-- Exams Table
+CREATE TABLE IF NOT EXISTS exams (
     id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     exam_name VARCHAR(255) NOT NULL,
     subject_id INT(11) UNSIGNED NOT NULL,
@@ -65,8 +110,8 @@ CREATE TABLE exams (
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 5. Exam Questions Assignment Table
-CREATE TABLE exam_questions (
+-- Exam Questions Assignment Table
+CREATE TABLE IF NOT EXISTS exam_questions (
     id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     exam_id INT(11) UNSIGNED NOT NULL,
     question_id INT(11) UNSIGNED NOT NULL,
@@ -79,8 +124,8 @@ CREATE TABLE exam_questions (
     UNIQUE KEY unique_exam_question (exam_id, question_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 6. Exam Attempts/Results Table (Main Results Table)
-CREATE TABLE exam_attempts (
+-- Exam Attempts/Results Table (Main Results Table)
+CREATE TABLE IF NOT EXISTS exam_attempts (
     id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id INT(11) UNSIGNED NOT NULL,
     user_name VARCHAR(255) NOT NULL,
@@ -105,8 +150,8 @@ CREATE TABLE exam_attempts (
     FOREIGN KEY (exam_id) REFERENCES exams(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 7. User Answers Table (Individual Question Answers)
-CREATE TABLE user_answers (
+-- User Answers Table (Individual Question Answers)
+CREATE TABLE IF NOT EXISTS user_answers (
     id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     attempt_id INT(11) UNSIGNED NOT NULL,
     question_id INT(11) UNSIGNED NOT NULL,
@@ -120,6 +165,43 @@ CREATE TABLE user_answers (
     FOREIGN KEY (attempt_id) REFERENCES exam_attempts(id) ON DELETE CASCADE,
     FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Exam Assignments Table
+CREATE TABLE IF NOT EXISTS exam_assignments (
+    id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    exam_id INT(11) UNSIGNED NOT NULL,
+    user_id INT(11) UNSIGNED NOT NULL,
+    assigned_by INT(11) UNSIGNED NULL,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    due_date TIMESTAMP NULL,
+    status ENUM('assigned', 'in_progress', 'completed') DEFAULT 'assigned',
+    attempt_id INT(11) UNSIGNED NULL,
+    INDEX idx_exam (exam_id),
+    INDEX idx_user (user_id),
+    INDEX idx_status (status),
+    FOREIGN KEY (exam_id) REFERENCES exams(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (attempt_id) REFERENCES exam_attempts(id) ON DELETE SET NULL,
+    UNIQUE KEY unique_user_exam (user_id, exam_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ========================================
+-- 3. INSERT ADMIN USER
+-- ========================================
+
+INSERT INTO users (full_name, email, password, user_role, is_active) 
+VALUES (
+    'Yogesh Admin',
+    'yogesh@gmail.com',
+    '$2y$10$rZ5c3L4qQXQjJ5KxXz5ZLeO8xE4cP5PQZ5dR9gZ5fZ5eZ5dZ5cZ5e',
+    'admin',
+    1
+);
+
+-- ========================================
+-- 4. INSERT SAMPLE DATA
+-- ========================================
 
 -- Insert Sample Subjects
 INSERT INTO subjects (subject_name, subject_code, description) VALUES
@@ -195,11 +277,29 @@ INSERT INTO question_options (question_id, option_text, is_correct, option_order
 INSERT INTO exams (exam_name, subject_id, duration_minutes, passing_marks, instructions) VALUES
 ('Mathematics Final Exam', 1, 30, 3, 'Answer all questions carefully. Each question carries marks as indicated.');
 
--- Sample data showing results format (commented out)
--- Uncomment ONLY if you have a user with ID 1 in your users table
--- This is just to show the structure - actual results are created when students take exams
-
--- INSERT INTO exam_attempts (user_id, user_name, exam_id, exam_name, subject_name, total_questions, attempted_questions, correct_answers, wrong_answers, marks_obtained, total_marks, percentage, status, end_time) VALUES
--- (1, 'Test Student', 1, 'Mathematics Final Exam', 'Mathematics', 5, 5, 4, 1, 4, 5, 80.00, 'completed', NOW());
-
--- NOTE: Real results will be automatically created when students take exams
+-- ========================================
+-- SETUP COMPLETE!
+-- ========================================
+-- Database: user_auth_db
+-- Admin Login: yogesh@gmail.com
+-- Admin Password: (use the password you set)
+-- 
+-- Tables Created:
+-- - users (authentication)
+-- - password_resets
+-- - login_attempts
+-- - subjects
+-- - questions
+-- - question_options
+-- - exams
+-- - exam_questions
+-- - exam_attempts
+-- - user_answers
+-- - exam_assignments
+--
+-- Sample Data:
+-- - 1 Admin user
+-- - 5 Subjects
+-- - 6 Sample questions
+-- - 1 Sample exam
+-- ========================================
