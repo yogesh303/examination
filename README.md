@@ -15,6 +15,37 @@ Complete web-based examination system with user authentication, exam management,
 
 ---
 
+## 📸 Screenshots
+
+### Login & Authentication
+![Login Page](screenshots/login.png)
+*Clean and modern login interface with email/password authentication*
+
+### Admin Dashboard
+![Admin Dashboard](screenshots/dashboard.png)
+*Admin dashboard showing user statistics and management*
+
+### Exam Management
+![Add Subject](screenshots/add-subject.png)
+*Add new subjects with name, code, and description*
+
+![Add Question](screenshots/add-question.png)
+*Create questions with 4 options - radio or checkbox type*
+
+![Manage Exams](screenshots/manage-exams.png)
+*Create exams, assign questions, and manage assignments*
+
+### Exam Taking Interface
+![Exam Interface](screenshots/exam-taking.png)
+*Clean exam interface with timer, question display, and navigation*
+
+### Results & Analytics
+![Results View](screenshots/results.png)
+*Detailed results with question-wise review and statistics*
+
+---
+
+
 ## ✨ Features
 
 ### Core Features
@@ -447,8 +478,4 @@ Includes:
 ## 📌 Version
 
 **Version:** 1.0.0
-**Updated:** December 2024
-
----
-
-**Built with ❤️ for education**
+**Updated:** December 2025
