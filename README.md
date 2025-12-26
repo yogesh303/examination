@@ -18,7 +18,7 @@ Complete web-based examination system with user authentication, exam management,
 ## 📸 Screenshots
 
 ### Login & Authentication
-![Login Page](screenshots/login.png)
+![Login Page](screenshots/login.PNG)
 *Clean and modern login interface with email/password authentication*
 
 ### Admin Dashboard
